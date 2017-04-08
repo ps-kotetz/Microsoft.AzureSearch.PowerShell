@@ -3,7 +3,7 @@ $AzureSearchKey = ""
 #$AzureSearchURL = "https://psazuresearch.search.windows.net/indexes?api-version=2016-09-01"
 $AzureSearchService = ""
 $AzureSearchAPIVersion=""
-https://psazuresearch.search.windows.net/indexes?api-version=2016-09-01
+#https://psazuresearch.search.windows.net/indexes?api-version=2016-09-01
 
 function Connect-AzureSearch{
     Param(
@@ -15,6 +15,10 @@ function Connect-AzureSearch{
         $Script:AzureSearchService = "https://" + $ServiceName + ".search.windows.net/"
         $Script:AzureSearchAPIVersion = "?" + $APIVersion
         $Script:AzureSearchKey = $Key
+}
+
+function Add-AzureSearchDocument{
+    
 }
 
 function New-AzureSearchField{
@@ -29,8 +33,11 @@ function New-AzureSearchField{
         [switch]$Sortable,
         [switch]$Facetable,
         [switch]$isKey,
-        [switch]$retrievable
+        [switch]$Retrievable,
+        [string]$Analyzer
     )
+
+    # retriebable は default true ? searchable もdefault true?
     $fieldData=[ordered]@{
         name=$Name
         type=$Type
@@ -39,7 +46,11 @@ function New-AzureSearchField{
         sortable=$Sortable.ToBool()
         facetable= $Facetable.ToBool()
         key=$isKey.ToBool()
-        retrievable=$retrievable.ToBool()
+        retrievable=$Retrievable.ToBool()
+    }
+    if($Analyzer -ne $null)
+    {
+        $fieldData.analyzer = $Analyzer
     }
     New-Object psobject -Property $fieldData
 }
@@ -57,7 +68,6 @@ function New-AzureSearchIndex{
         $Fields
         )
     $requestUri = $AzureSearchService + "indexes" + $AzureSearchAPIVersion
-    $requestUri
     $props =[ordered]@{
         name = $Name
         fields= $Fields
@@ -66,30 +76,32 @@ function New-AzureSearchIndex{
         "api-key"=$AzureSearchKey
         "Content-Type" = "application/json"
     }
-    $headers
 
     $indexData = New-Object psobject -Property $props
-    $indexData
     $data = $indexData | ConvertTo-Json
-    $data
     $body = [System.Text.Encoding]::UTF8.GetBytes($data)
     Invoke-WebRequest -Uri $requestUri -Method Post -Headers $Headers -Body $body
 }
 
+function Invoke-AzureSearch
+{
+    Param($Query)
+
+}
+
 function Remove-AzureSearchIndex {
+    Param([string]$IndexName)
+    $AppStr = "indexes/" + $IndexName
 
-Invoke-WebRequest 
-$URI = "https://psazuresearch.search.windows.net/indexes/hotels?api-version=2016-09-01"
-Invoke-WebRequest -Uri $URI -Headers $Headers -Method Delete
-
-
+    $URI = $AzureSearchService + $AppStr + $AzureSearchAPIVersion
+    $URI
+  #   "https://psazuresearch.search.windows.net/indexes/hotels?api-version=2016-09-01"
+    Invoke-WebRequest -Uri $URI -Headers $Headers -Method Delete
 }
 
 <#
 New-AzureSearchField
 New-AzureSearchIndex
-New-AzureSearchField
-Get-AzureSearchIndex
 Update-AzureSearchIndex
 Delete-AzureSearchIndex
 Get-AzureSearchStatistics
