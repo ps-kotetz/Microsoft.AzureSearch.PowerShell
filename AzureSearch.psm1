@@ -1,5 +1,4 @@
-﻿
-$AzureSearchKey = ""
+﻿$AzureSearchKey = ""
 $AzureSearchService = ""
 $AzureSearchAPIVersion=""
 $BaseRequestHeaders=$null
@@ -37,12 +36,13 @@ function Add-AzureSearch{8}Document{{
         "Content-Type" = "application/json"
     }}
     
-    Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
 
 function Merge-AzureSearch{8}Document{{
     Param({1},{2})
-    
     $objectData=[ordered]@{{  
         '@search.action'='merge';
         {3}=${4};
@@ -61,13 +61,13 @@ function Merge-AzureSearch{8}Document{{
         "api-key"="{7}"
         "Content-Type" = "application/json"
     }}
-    
-    Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
 
 function Remove-AzureSearch{8}Document{{
     Param({1})
-    
     $objectData=[ordered]@{{  
         '@search.action'='delete';
         {3}=${4};
@@ -82,14 +82,14 @@ function Remove-AzureSearch{8}Document{{
         "api-key"="{7}"
         "Content-Type" = "application/json"
     }}
-    
-    Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
 '@
 
-
-
 function Update-AzureSearchSubModule{
+    Param()
     $uri = $Script:AzureSearchService + "indexes" + $Script:AzureSearchAPIVersion
     $global:indexList = (Invoke-WebRequest -Headers $BaseRequestHeaders -Uri $uri -Method Get).Content | ConvertFrom-Json
 
@@ -117,15 +117,15 @@ function Update-AzureSearchSubModule{
                                                     $AzureSearchKey,
                                                     $UpperindexName
                                                 )
-
         Write-Verbose $moduleDefinition
         Write-Verbose "Update-AzureSearchSubModule"
-        if((Get-Module ("Microsoft.AzureSearch.PowerShell." + $indexName)) -ne $null){
-            Remove-Module ("Microsoft.AzureSearch.PowerShell." + $indexName)
+        if((Get-Module ("AzureSearch." + $indexName)) -ne $null){
+            Remove-Module ("AzureSearch." + $indexName)
         }
-        New-Module -Name ("Microsoft.AzureSearch.PowerShell." + $indexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
+        New-Module -Name ("AzureSearch." + $indexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
     }
 }
+
 function Connect-AzureSearch{
     Param(
         [Parameter(Mandatory=$true)][string]$Key,
@@ -143,7 +143,6 @@ function Connect-AzureSearch{
     Write-Verbose -Message ("Connect-AzureSearch")
     Update-AzureSearchSubModule -Verbose
 }
-
 
 function New-AzureSearchField{
     Param(
@@ -179,8 +178,6 @@ function New-AzureSearchField{
     New-Object psobject -Property $fieldData
 }
 
-
-
 function New-AzureSearchIndex{
     Param(
         [Parameter(Mandatory=$true)]
@@ -188,21 +185,33 @@ function New-AzureSearchIndex{
         [Parameter(Mandatory=$true)]
         $Fields
         )
+    Write-Verbose -Message ("New-AzureSearchIndex")
     $requestUri = $AzureSearchService + "indexes" + $AzureSearchAPIVersion
     $props =[ordered]@{
         name = $Name
         fields= $Fields
     }
+    
     $indexData = New-Object psobject -Property $props
+    Write-Verbose -Message ("Request URL : " + $requestUri)
+    Write-Verbose ("Index definition")
+    Write-Verbose ($indexData)
     $data = $indexData | ConvertTo-Json
     $body = [System.Text.Encoding]::UTF8.GetBytes($data)
-    Invoke-WebRequest -Uri $requestUri -Method Post -Headers $BaseRequestHeaders -Body $body
+    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $BaseRequestHeaders -Body $body
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
     Update-AzureSearchSubModule
 }
 
 function Search-AzureSearch
 {
-    Param([string]$IndexName,[string]$SearchString,[string]$FieldSelection="*",[string]$Filter)
+    Param(
+        [Parameter(Mandatory=$true)][string]$IndexName,
+        [string]$SearchString,
+        [string]$FieldSelection="*",
+        [string]$Filter)
+    Write-Verbose -Message ("Search-AzureSearch")
     $requestUri = $AzureSearchService + "indexes/" + $IndexName + "/docs/search" + $AzureSearchAPIVersion
     $searchObj=[ordered]@{
         search = $SearchString
@@ -212,11 +221,15 @@ function Search-AzureSearch
     {
         $searchObj.filter = $Filter
     }
-
+    Write-Verbose -Message ("Request URL : " + $requestUri)
+    Write-Verbose ("Search condition")
+    Write-Verbose ("$searchObj")
     $indexData = New-Object psobject -Property $searchObj
     $data = $indexData | ConvertTo-Json
     $body = [System.Text.Encoding]::UTF8.GetBytes($data)
     $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $BaseRequestHeaders -Body $body
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
     $result.content | ConvertFrom-Json | ForEach-Object value
 }
 
@@ -227,20 +240,29 @@ function Remove-AzureSearchIndex {
                   HelpUri = 'http://www.microsoft.com/',
                   ConfirmImpact='Medium')]
     Param([string]$Name)
+    Write-Verbose -Message ("Remove-AzureSearchIndex")
     $AppStr = "indexes/" + $Name
 
     $URI = $AzureSearchService + $AppStr + $AzureSearchAPIVersion
     Write-Verbose -Message ("Request URL : " + $URI)
-  #   "https://psazuresearch.search.windows.net/indexes/hotels?api-version=2016-09-01"
-    Invoke-WebRequest -Uri $URI -Headers $BaseRequestHeaders -Method Delete
+    $result = Invoke-WebRequest -Uri $URI -Headers $BaseRequestHeaders -Method Delete
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }
 
 function Get-AzureSearchIndex {
     Param([string]$Name)
+    Write-Verbose -Message ("Get-AzureSearchIndex")
     $appStr = "indexes/" + $Name
     $uri = $AzureSearchService + $appStr + $AzureSearchAPIVersion
+
     Write-Verbose -Message ("Request URL : " + $uri)
-  #   "https://psazuresearch.search.windows.net/indexes/hotels?api-version=2016-09-01"
+
     $result = Invoke-WebRequest -Uri $uri -Headers $BaseRequestHeaders -Method Get
+    Write-Verbose -Message ("Status Code : " + $result.StatusCode)
+    Write-Verbose -Message ("Description : " + $result.StatusDescription)
     $result.content | ConvertFrom-Json
 }
+
+
+Export-ModuleMember -Function Connect-AzureSearch,Get-AzureSearchIndex,New-AzureSearchField,New-AzureSearchIndex,Remove-AzureSearchIndex,Search-AzureSearch
