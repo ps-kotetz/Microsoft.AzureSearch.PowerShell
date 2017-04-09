@@ -119,10 +119,10 @@ function Update-AzureSearchSubModule{
                                                 )
         Write-Verbose $moduleDefinition
         Write-Verbose "Update-AzureSearchSubModule"
-        if((Get-Module ("AzureSearch." + $indexName)) -ne $null){
-            Remove-Module ("AzureSearch." + $indexName)
+        if((Get-Module ("AzureSearch." + $UpperindexName)) -ne $null){
+            Remove-Module ("AzureSearch." + $UpperindexName)
         }
-        New-Module -Name ("AzureSearch." + $indexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
+        New-Module -Name ("AzureSearch." + $UpperindexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
     }
 }
 
@@ -263,6 +263,5 @@ function Get-AzureSearchIndex {
     Write-Verbose -Message ("Description : " + $result.StatusDescription)
     $result.content | ConvertFrom-Json
 }
-
 
 Export-ModuleMember -Function Connect-AzureSearch,Get-AzureSearchIndex,New-AzureSearchField,New-AzureSearchIndex,Remove-AzureSearchIndex,Search-AzureSearch
