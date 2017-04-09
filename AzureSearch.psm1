@@ -15,7 +15,7 @@ $TypeValueTable = @{
 }
 
 $ModuleTemplate = @'
-function Add-AzureSearch{8}Document{{
+function Global:Add-AzureSearch{8}Document{{
     Param({1},{2})
     $objectData=[ordered]@{{  
         '@search.action'='upload';
@@ -36,12 +36,12 @@ function Add-AzureSearch{8}Document{{
         "Content-Type" = "application/json"
     }}
     
-    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $requestHeaders -Body $body
+    $result = Invoke-WebRequest -Uri $requestUri -Method Post -Headers $BaseRequestHeaders -Body $body
     Write-Verbose -Message ("Status Code : " + $result.StatusCode)
     Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
 
-function Merge-AzureSearch{8}Document{{
+function Global:Merge-AzureSearch{8}Document{{
     Param({1},{2})
     $objectData=[ordered]@{{  
         '@search.action'='merge';
@@ -66,7 +66,7 @@ function Merge-AzureSearch{8}Document{{
     Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
 
-function Remove-AzureSearch{8}Document{{
+function Global:Remove-AzureSearch{8}Document{{
     Param({1})
     $objectData=[ordered]@{{  
         '@search.action'='delete';
@@ -86,6 +86,8 @@ function Remove-AzureSearch{8}Document{{
     Write-Verbose -Message ("Status Code : " + $result.StatusCode)
     Write-Verbose -Message ("Description : " + $result.StatusDescription)
 }}
+
+Export-ModuleMember -Function *Document
 '@
 
 function Update-AzureSearchSubModule{
@@ -119,10 +121,12 @@ function Update-AzureSearchSubModule{
                                                 )
         Write-Verbose $moduleDefinition
         Write-Verbose "Update-AzureSearchSubModule"
-        if((Get-Module ("AzureSearch." + $UpperindexName)) -ne $null){
-            Remove-Module ("AzureSearch." + $UpperindexName)
-        }
-        New-Module -Name ("AzureSearch." + $UpperindexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
+        #if((Get-Module ("AzureSearch." + $UpperindexName)) -ne $null){
+        #    Remove-Module ("AzureSearch." + $UpperindexName)
+        #}
+        #New-Module -Name ("AzureSearch." + $UpperindexName) -ScriptBlock ([scriptblock]::Create($moduleDefinition)) | Import-Module -Global
+
+        Invoke-Command -ScriptBlock ([scriptblock]::Create($moduleDefinition))
     }
 }
 
