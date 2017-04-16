@@ -10,7 +10,7 @@ function Test-AzureSearchModule{
     Connect-AzureSearch -Key $AzureKey -ServiceName psazuresearch -Verbose
     
     Remove-AzureSearchIndex -Name "hotels" -verbose
-    Remove-AzureSearchIndex -Name "hotels2" -Verbose
+    #Remove-AzureSearchIndex -Name "hotels2" -Verbose
 
     Write-Host -ForegroundColor Yellow "Define index fields"
     $fields= & {
@@ -29,25 +29,39 @@ function Test-AzureSearchModule{
     }
 
     Write-Host -ForegroundColor Yellow "Create new indexes"
+    New-AzureSearchIndex -Name hotels -Fields $fields -Verbose -JsonRequest
     New-AzureSearchIndex -Name hotels -Fields $fields -Verbose
-    New-AzureSearchIndex -Name hotels2 -Fields $fields -Verbose
+
+    #New-AzureSearchIndex -Name hotels2 -Fields $fields -Verbose
     
     Write-Host -ForegroundColor Yellow "Get created indexes"
     Get-AzureSearchIndex -Name hotels -Verbose
-    Get-AzureSearchIndex -Name hotels2 -Verbose
+    #Get-AzureSearchIndex -Name hotels2 -Verbose
 
     
     Write-Host -ForegroundColor Yellow "Upload test data"
-    Add-AzureSearchHotelsDocument -KeyFeild_hotelId 01 -hotelName nicerHotel -category business -description "very nice hotel" -rating 1 -Verbose
-    Add-AzureSearchHotelsDocument -KeyFeild_hotelId 02 -hotelName nicerHotel2 -category business -description "very nice hotel2" -rating 2 -Verbose
-    Add-AzureSearchHotelsDocument -KeyFeild_hotelId 03 -hotelName nicerHotel3 -category business -description "very nice hotel3" -rating 3 -Verbose
+    Add-AzureSearchHotelsDocument -hotelId 01 -hotelName nicerHotel -category business -description "very nice hotel" -rating 1 -Verbose
+    Add-AzureSearchHotelsDocument -hotelId 02 -hotelName nicerHotel2 -category business -description "very nice hotel2" -rating 2 -Verbose
+    Add-AzureSearchHotelsDocument -hotelId 03 -hotelName nicerHotel3 -category business -description "very nice hotel3" -rating 3 -Verbose
+    Merge-AzureSearchHotelsDocument -hotelId 02 -hotelName nicehotel2-2 -description updated
 
-    Add-AzureSearchHotels2Document -KeyFeild_hotelId 01 -hotelName nonNicerHotel -category business -description "not very nice hotel1" -rating 2 -Verbose
-    Add-AzureSearchHotels2Document -KeyFeild_hotelId 02 -hotelName nonNicerHotel2 -category business -description "not very nice hotel2" -rating 3 -Verbose
-    Add-AzureSearchHotels2Document -KeyFeild_hotelId 03 -hotelName nonNicerHotel3 -category business -description "not very nice hotel3" -rating 1 -Verbose
+    Add-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNice";rating=5} -Verbose
+    Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNice ? ";rating=5} -Verbose
+    Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 05 -IndexName hotels -MergeOrUpload -Verbose
+    Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 05 -IndexName hotels -DocumentData @{description="Not VeryNice ? ";rating=5} -MergeOrUpload -Verbose
 
-    Write-Host -ForegroundColor Yellow "Search test data"
-    Search-AzureSearch -IndexName hotels -SearchString *
-    Search-AzureSearch -IndexName hotels2 -SearchString hoge
+   # Add-AzureSearchHotels2Document -KeyFeild_hotelId 01 -hotelName nonNicerHotel -category business -description "not very nice hotel1" -rating 2 -Verbose
+   # Add-AzureSearchHotels2Document -KeyFeild_hotelId 02 -hotelName nonNicerHotel2 -category business -description "not very nice hotel2" -rating 3 -Verbose
+   # Add-AzureSearchHotels2Document -KeyFeild_hotelId 03 -hotelName nonNicerHotel3 -category business -description "not very nice hotel3" -rating 1 -Verbose
+
+   Remove-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels 
+   Start-Sleep -Seconds 3
+   Write-Host -ForegroundColor Yellow "Search test data"
+   Search-AzureSearch -IndexName hotels -SearchString *
+   # Search-AzureSearch -IndexName hotels2 -SearchString hoge
  
 }
+
+Test-AzureSearchModule
+
+
