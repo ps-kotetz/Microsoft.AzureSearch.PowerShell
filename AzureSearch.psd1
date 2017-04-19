@@ -9,10 +9,10 @@
 @{
 
 # このマニフェストに関連付けられているスクリプト モジュール ファイルまたはバイナリ モジュール ファイル。
-# RootModule = ''
+RootModule = 'AzureSearch.psm1'
 
 # このモジュールのバージョン番号です。
-ModuleVersion = '0.0.4'
+ModuleVersion = '0.0.5'
 
 # サポートされている PSEditions
 # CompatiblePSEditions = @()
