@@ -18,7 +18,42 @@ $TypeValueTable = @{
     "Edm.GeographyPoint" = "[string]"
 }
 
+$TypeValueObjectTable=@{
+    "Edm.String" = [String]
+    "Collection(Edm.String)"=[String[]]
+    "Edm.Boolean"=[Boolean]
+    "Edm.Int32" = [Int32]
+    "Edm.Int64" = [Int64]
+    "Edm.Double"= [Double]
+    "Edm.DateTimeOffset"=[DateTimeOffset]
+    "Edm.GeographyPoint" = [string]
+}
+
 $IndexDefinitionTable = @{ 
+}
+
+function Get-LikelyIndex
+{
+    Param([string[]]$Fields)
+    $scorelist=@()
+    $keys=$IndexDefinitionTable.Keys
+    for ($i=0 ; $i -lt $keys.Count ; $i++)
+    {
+        $props =@{
+            fieldName = $keys[$i]
+            similerity= (Compare-Object $Fields ($IndexDefinitionTable[$keys].fields | % name) -IncludeEqual -ExcludeDifferent).count
+        }
+        $scorelist+=New-Object psobject -Property $props
+    }
+
+    $sortedScore=$scorelist | Sort-Object similerity -Descending 
+    # return similerity MAX. this could be multiple value
+    $sortedScore | Where-Object {$_.similerity -eq $sortedScore[0].similerity}
+}
+
+function Get-KeyField{
+    Param([string]$IndexName)
+    ($IndexDefinitionTable[$IndexName].fields | Where-Object {$_.key -eq "True"}).name
 }
 
 $ModuleTemplate = @'
@@ -112,8 +147,11 @@ function Update-AzureSearchSubModule{
     $global:indexList = (Invoke-WebRequest -Headers $BaseRequestHeaders -Uri $uri -Method Get).Content | ConvertFrom-Json
 
     foreach($indexInfo in $global:indexList.Value){
-        $indexDefinition=@{}
+        
         $indexName =  $indexInfo.name
+
+        $script:IndexDefinitionTable[$indexName] = $indexInfo
+
         $UpperindexName = [char]::ToUpper($indexInfo.name[0]) + $indexInfo.name.Substring(1)
         $keyField = $indexInfo.fields | Where-Object key -eq "true"
         $nonKeyField = $indexInfo.fields | Where-Object key -ne "true"
@@ -142,7 +180,7 @@ function Update-AzureSearchSubModule{
         Write-Verbose "Update-AzureSearchSubModule"
         Invoke-Command -ScriptBlock ([scriptblock]::Create($moduleDefinition))
 
-        $script:IndexDefinitionTable[$indexName] = $indexDefinition
+        
     }
 }
 
@@ -234,34 +272,79 @@ function New-AzureSearchField{
     New-Object psobject -Property $fieldData
 }
 
+
+function Get-FieldTypeData {
+    Param([string]$IndexName,[string]$FieldName)
+    $fieldMetadata = $IndexDefinitionTable[$IndexName].fields | Where-Object {$_.name -eq $FieldName} 
+    $TypeValueObjectTable[$fieldMetadata.type]
+}
 function Add-AzureSearchDocument{
     [CmdletBinding(
                 SupportsShouldProcess=$true, 
                 PositionalBinding=$true)]
     Param(
-            [Parameter(Mandatory=$true)][string]$KeyFieldName,
-            [Parameter(Mandatory=$true)][string]$KeyFieldValue,
-            [Parameter(Mandatory=$true)][string]$IndexName,
-            [System.Collections.Hashtable]$DocumentData,
+            [Parameter(ParameterSetName="PipeLine",ValueFromPipeline=$true,Mandatory=$true)][PSObject]$InputObject,
+            [string]$IndexName,
+            [Parameter(ParameterSetName="CmdLine")][System.Collections.Hashtable]$DocumentData,
+            
             [switch]$JsonRequest
         )
-    $requestUri = $AzureSearchService + "indexes/" + $IndexName + "/docs/index" + $AzureSearchAPIVersion
-    $objectData=[ordered]@{
-        '@search.action'='upload';
-        $KeyFieldName=$KeyFieldValue;
-    }
-    if($DocumentData -ne $null)
-    {
-       $objectData += $DocumentData
-    }
-    $uploadObject = New-Object psobject |  Add-Member -NotePropertyName value -NotePropertyValue @(New-Object psobject -Property $objectData) -PassThru
-    if($JsonRequest)
-    {
-        Get-PostResult -Uri $requestUri -Object $uploadObject -JsonRequest
-    }
-    else
-    {
-        Get-PostResult -Uri $requestUri -Object $uploadObject 
+    Process{
+    
+        switch ($PsCmdlet.ParameterSetName) 
+        {
+            "CmdLine" {
+                $requestUri = $AzureSearchService + "indexes/" + $IndexName + "/docs/index" + $AzureSearchAPIVersion
+                $fieldMetadata = $IndexDefinitionTable[$IndexName]
+                $keyFieldName=Get-KeyField -IndexName $IndexName
+                $objectData=[ordered]@{
+                    '@search.action'='upload';
+                    $keyFieldName=$DocumentData[$keyFieldName] -as (Get-FieldTypeData -IndexName $IndexName -FieldName $keyFieldName)
+                }
+                $DocumentData.Remove($keyFieldName)
+
+                # Fix data type for input
+                if($DocumentData -ne $null)
+                {
+                    foreach($currentKey in $DocumentData.Keys)
+                    {
+                        $fieldMetadata = $IndexDefinitionTable[$IndexName].fields | Where-Object {$_.name -eq $currentKey} 
+                        $metadataType = $TypeValueObjectTable[$fieldMetadata.type]
+                        $objectData[$currentKey] = $DocumentData[$currentKey] -as $metadataType
+                    }
+                }
+            }
+            "PipeLine" {
+                 $fields = $InputObject | Get-Member -MemberType *Property* | % name
+                 $tmpIndexName = (Get-LikelyIndex -Fields $fields).fieldName
+
+                 $requestUri = $AzureSearchService + "indexes/" + $tmpIndexName + "/docs/index" + $AzureSearchAPIVersion
+                 $keyFieldName=Get-KeyField -IndexName $tmpIndexName
+                 $objectData=[ordered]@{
+                    '@search.action'='upload';
+                    $keyFieldName=$InputObject.$keyFieldName -as (Get-FieldTypeData -IndexName $tmpIndexName -FieldName $keyFieldName)
+                }
+                $fields = $fields | Where-Object {$_ -ne $keyFieldName}
+
+                foreach($currentKey in $fields)
+                {
+                    $fieldMetadata = $IndexDefinitionTable[$tmpIndexName].fields | Where-Object {$_.name -eq $currentKey} 
+                    $metadataType = $TypeValueObjectTable[$fieldMetadata.type]
+                    if(-not [string]::IsNullOrEmpty($InputObject.$currentKey)){
+                        $objectData[$currentKey] = $InputObject.$currentKey -as $metadataType
+                    }
+                }
+            }
+        }
+        $uploadObject = New-Object psobject |  Add-Member -NotePropertyName value -NotePropertyValue @(New-Object psobject -Property $objectData) -PassThru
+        if($JsonRequest)
+        {
+            Get-PostResult -Uri $requestUri -Object $uploadObject -JsonRequest
+        }
+        else
+        {
+            Get-PostResult -Uri $requestUri -Object $uploadObject 
+        }
     }
 }
 
@@ -270,14 +353,14 @@ function Merge-AzureSearchDocument{
                 SupportsShouldProcess=$true, 
                 PositionalBinding=$true)]
     Param(
-            [Parameter(Mandatory=$true)][string]$KeyFieldName,
-            [Parameter(Mandatory=$true)][string]$KeyFieldValue,
             [Parameter(Mandatory=$true)][string]$IndexName,
             [System.Collections.Hashtable]$DocumentData,
             [switch]$MergeOrUpload,
             [switch]$JsonRequest
         )
     $requestUri = $AzureSearchService + "indexes/" + $IndexName + "/docs/index" + $AzureSearchAPIVersion
+    $fieldMetadata = $IndexDefinitionTable[$IndexName]
+    $keyFieldName=Get-KeyField -IndexName $IndexName
     if($MergeOrUpload)
     {
         $action = 'mergeOrUpload'
@@ -288,11 +371,17 @@ function Merge-AzureSearchDocument{
     }
     $objectData=[ordered]@{ 
         '@search.action'=$action
-        $KeyFieldName=$KeyFieldValue
+         $keyFieldName=$DocumentData[$keyFieldName] -as (Get-FieldTypeData -IndexName $IndexName -FieldName $keyFieldName)
     }
+    $DocumentData.Remove($keyFieldName)
     if($DocumentData -ne $null)
     {
-       $objectData += $DocumentData
+        foreach($currentKey in $DocumentData.Keys)
+        {
+            $fieldMetadata = $IndexDefinitionTable[$IndexName].fields | Where-Object {$_.name -eq $currentKey} 
+            $metadataType = $TypeValueObjectTable[$fieldMetadata.type]
+            $objectData[$currentKey] = $DocumentData[$currentKey] -as $metadataType
+        }
     }
     $uploadObject = New-Object psobject |  Add-Member -NotePropertyName value -NotePropertyValue @(New-Object psobject -Property $objectData) -PassThru
     if($JsonRequest)
@@ -399,7 +488,6 @@ function New-AzureSearchIndex{
         Get-PostResult -Uri $requestUri -Object $indexData 
     }
     Update-AzureSearchSubModule
-
 }
 
 function Search-AzureSearch{
@@ -464,9 +552,7 @@ function Get-PostResult{
 function Remove-AzureSearchIndex {
     [CmdletBinding(
                   SupportsShouldProcess=$true, 
-                  PositionalBinding=$false,
-                  HelpUri = 'http://www.microsoft.com/',
-                  ConfirmImpact='Medium')]
+                  PositionalBinding=$false)]
     Param(
         [string]$Name
          )
