@@ -94,8 +94,7 @@ function Out-JsonObject{
     }
 }
 
-function Check-AzureConnection
-{
+function Check-AzureConnection{
     if($AzureSearchKey -eq $null)
     {
         Write-Error "Run Connect-AzureSearch command first. Connect-AzureSearch -Key <adminKey> -ServiceName <AzureSearch Service Name>"
@@ -148,6 +147,27 @@ function Update-AzureSearchSubModule{
 }
 
 function Connect-AzureSearch{
+<#
+ .SYNOPSIS
+ Stores AzureSearch related parameters to scrip variable to be used in other functions.
+
+ .DESCRIPTION
+ The Connect-AzureSearch cmdlet lets you store AzureSearch parameters to scrip variable to be used in other functions.
+
+ .parameter Key
+ Azure Search Admin Key.
+
+ .parameter ServiceName
+ Azure Search service name. If your search uri is https://mysearch.search.windows.net/, then mysearch is the service name.
+
+ .parameter APIVersion
+ Azure Search API version. (optional)
+
+ .EXAMPLE
+ Connect-AzureSearch -Key j3fjejfzjo3ifjijf -ServiceName mysearch
+
+ This examples connects to Azure Search of https://mysearch.search.windows.net/
+#>
     [CmdletBinding(
             SupportsShouldProcess=$true, 
             PositionalBinding=$true)]
@@ -312,8 +332,42 @@ function Remove-AzureSearchDocument{
     }
 }
 
-
 function New-AzureSearchIndex{
+<#
+ .SYNOPSIS
+ Create new Azure Serach Index
+
+ .DESCRIPTION
+ The New-AzureSearchIndex cmdlet lets create new AzureSerach Index
+
+ .parameter Name
+ Azure Search Index Name.
+
+ .parameter Fields
+ Fields to be added to the Index. You can use New-AzureSearchField function to create fields.
+
+ .parameter JsonRequest
+ When specified, result is returned as json object.
+
+ .EXAMPLE
+ $fields= & {
+        New-AzureSearchField -Name hotelId -Type Edm.String -isKey -Retrievable
+        New-AzureSearchField -Name baseRate -Type Edm.Double
+        New-AzureSearchField -Name description -Type Edm.String -Retrievable
+        New-AzureSearchField -Name description_fr -Type Edm.String -Analyzer "fr.lucene" -Searchable
+        New-AzureSearchField -Name hotelName -Type Edm.String
+        New-AzureSearchField -Name category -Type Edm.String
+        New-AzureSearchField -Name tags -Type 'Collection(Edm.String)'
+        New-AzureSearchField -Name parkingINcluded -Type Edm.Boolean
+        New-AzureSearchField -Name smokingAllowed -Type Edm.Boolean
+        New-AzureSearchField -Name lastRenovationDate -Type Edm.DateTimeOffset
+        New-AzureSearchField -Name rating -Type Edm.Int32
+        New-AzureSearchField -Name location -Type Edm.GeographyPoint
+ }
+ New-AzureSearchIndex -Name hotels -Fields $fields -Verbose
+
+ This examples creates an index with 12 fields.
+#>
     [CmdletBinding(
             SupportsShouldProcess=$true, 
             PositionalBinding=$true)]
@@ -348,9 +402,7 @@ function New-AzureSearchIndex{
 
 }
 
-
-function Search-AzureSearch
-{
+function Search-AzureSearch{
     [CmdletBinding(
             SupportsShouldProcess=$true, 
             PositionalBinding=$true)]
@@ -386,8 +438,7 @@ function Search-AzureSearch
     }
 }
 
-function Get-PostResult
-{
+function Get-PostResult{
     Param($Uri,$Object,[switch]$JsonRequest)
     $jsonData = $Object | ConvertTo-Json
     if($JsonRequest)
