@@ -47,7 +47,7 @@ $fields= & {
  
 #### Create a new index with the fields above
 
-```powershell 
+```powershell
 New-AzureSearchIndex -Name hotels -Fields $fields -Verbose -JsonRequest
 New-AzureSearchIndex -Name hotels -Fields $fields -Verbose
 ```
@@ -68,7 +68,7 @@ Add-AzureSearchHotelsDocument -hotelId 03 -hotelName nicerHotel3 -category busin
 
 #### Update and upload some data
 
-``powershell 
+```powershell
 Merge-AzureSearchHotelsDocument -hotelId 02 -hotelName nicehotel2-2 -description updated
 Add-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNice";
 Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNic
@@ -84,6 +84,6 @@ Remove-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName ho
 
 #### Search a document
 
-```powershell 
+```powershell
 Search-AzureSearch -IndexName hotels -SearchString *
 ```
