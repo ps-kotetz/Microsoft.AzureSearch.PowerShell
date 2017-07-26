@@ -17,73 +17,71 @@ This module has no dependencies.
 
 #### Connect to Azure using a credential stored in the variable AzureKey
 ```powershell
-Connect-AzureSearch -Key $AzureKey -ServiceName psazuresearch -Verbose
+Connect-AzureSearch -Key $AzureKey -ServiceName mshack2017 -Verbose
 ```
 
-#### Remove the existing Index called hotels
+#### Remove the existing Index called zipcode
 
 ```powershell
-Remove-AzureSearchIndex -Name "hotels" -verbose
+Remove-AzureSearchIndex -Name "zipcode" -verbose
 ```
 
 #### Create some fields for the index
 
 ```powershell
-$fields= & {
-     New-AzureSearchField -Name hotelId -Type Edm.String -isKey -Retrievable
-     New-AzureSearchField -Name baseRate -Type Edm.Double
-     New-AzureSearchField -Name description -Type Edm.String -Retrievable
-     New-AzureSearchField -Name description_fr -Type Edm.String -Analyzer "fr
-     New-AzureSearchField -Name hotelName -Type Edm.String
-     New-AzureSearchField -Name category -Type Edm.String
-     New-AzureSearchField -Name tags -Type 'Collection(Edm.String)'
-     New-AzureSearchField -Name parkingINcluded -Type Edm.Boolean
-     New-AzureSearchField -Name smokingAllowed -Type Edm.Boolean
-     New-AzureSearchField -Name lastRenovationDate -Type Edm.DateTimeOffset
-     New-AzureSearchField -Name rating -Type Edm.Int32
-     New-AzureSearchField -Name location -Type Edm.GeographyPoint
- }
+$fields = & {
+    New-AzureSearchField -Name countryID -Type Edm.String
+    New-AzureSearchField -Name zipCode -Type Edm.String
+    New-AzureSearchField -Name zipCodeFull -Type Edm.String -IsKey -Retrievable    
+    New-AzureSearchField -Name stateName -Type Edm.String
+    New-AzureSearchField -Name cityName -Type Edm.String
+    New-AzureSearchField -Name townName -Type Edm.String
+    New-AzureSearchField -Name stateNameKanji -Type Edm.String
+    New-AzureSearchField -Name cityNameKanji -Type Edm.String
+    New-AzureSearchField -Name townNameKanji -Type Edm.String
+}
 ```
  
 #### Create a new index with the fields above
 
 ```powershell
-New-AzureSearchIndex -Name hotels -Fields $fields -Verbose -JsonRequest
-New-AzureSearchIndex -Name hotels -Fields $fields -Verbose
+New-AzureSearchIndex -Name zipcode -Fields $fields -Verbose
 ```
 
 #### Get the index created above
 
 ```powershell 
-Get-AzureSearchIndex -Name hotels -Verbose
+Get-AzureSearchIndex -Name zipcode -Verbose
 ```
 
-#### Upload some dummy data
+#### Upload a random document
 
 ```powershell
-Add-AzureSearchHotelsDocument -hotelId 01 -hotelName nicerHotel -category business -description "very nice hotel" -rating 1 -
-Add-AzureSearchHotelsDocument -hotelId 02 -hotelName nicerHotel2 -category business -description "very nice hotel2" -rating 2
-Add-AzureSearchHotelsDocument -hotelId 03 -hotelName nicerHotel3 -category business -description "very nice hotel3" -rating 3
+Add-AzureSearchZipcodeDocument -countryID 134 -zipCode 345 -zipCodeFull 445544 -stateName "aaa" -cityName "bbbb" -townName "ccc" -stateNameKanji "jjj" -cityNameKanji "llll" -townNameKanji "uuuuu"
 ```
 
-#### Update and upload some data
+#### Upload more data from [Japanese Zip Code List] (http://www.post.japanpost.jp/zipcode/dl/readme.html)
+##### Download the .csv file, delete after 10th column, and save it as "data.csv"
 
 ```powershell
-Merge-AzureSearchHotelsDocument -hotelId 02 -hotelName nicehotel2-2 -description updated
-Add-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNice";
-Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels -DocumentData @{description="Not VeryNic
-Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 05 -IndexName hotels -MergeOrUpload -Verbose
-Merge-AzureSearchDocument  -KeyFieldName hotelId -KeyFieldValue 05 -IndexName hotels -DocumentData @{description="Not VeryNic
+Import-Csv -UseCulture .\data.csv | Add-AzureSearchDocument -IndexName zipcode
+```
+
+#### Update a document
+
+```powershell
+Merge-AzureSearchZipcodeDocument -zipCodeFull 445544 -stateName ccccc -cityName dddd
+Merge-AzureSearchDocument  -KeyFieldName zipCodeFull -KeyFieldValue 445544 -IndexName zipcode -DocumentData @{townName="llll"}
 ```
 
 #### Remove some documents
 
 ```powershell
-Remove-AzureSearchDocument -KeyFieldName hotelId -KeyFieldValue 04 -IndexName hotels
+Remove-AzureSearchDocument -KeyFieldName zipCodeFull -KeyFieldValue 445544 -IndexName zipcode
 ```
 
 #### Search a document
 
 ```powershell
-Search-AzureSearch -IndexName hotels -SearchString *
+Search-AzureSearch -IndexName zipcode -SearchString *港区
 ```
