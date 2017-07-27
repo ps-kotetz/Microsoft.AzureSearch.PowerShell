@@ -20,7 +20,7 @@ This module has no dependencies.
 Connect-AzureSearch -Key $AzureKey -ServiceName mshack2017 -Verbose
 ```
 
-#### Remove the existing Index called zipcode
+#### Remove the existing Index called _zipcodenew_
 
 ```powershell
 Remove-AzureSearchIndex -Name "zipcodenew" -verbose
@@ -60,7 +60,7 @@ Get-AzureSearchIndex -Name zipcodenew -Verbose
 Add-AzureSearchZipcodenewDocument -countryID 134 -zipCode 345 -zipCodeFull 445544 -stateName "aaa" -cityName "bbbb" -townName "ccc" -stateNameKanji "jjj" -cityNameKanji "llll" -townNameKanji "uuuuu"
 ```
 
-###### You see the function ```powershell Add-AzureSearchZipcodenewDocument ``` is created automatically with index creation. It saves us from forgetting the fields names. Isn't it cool? 
+###### You see the function ```Add-AzureSearchZipcodenewDocument ``` is created automatically with index creation. It saves us from forgetting the fields names. Isn't it cool? 
 
 #### Upload more data from [Japanese Zip Code List] (http://www.post.japanpost.jp/zipcode/dl/readme.html)
 ##### Download the .csv file, delete all after the 9th column, and save it as "data.csv"
@@ -80,13 +80,13 @@ Merge-AzureSearchZipcodenewDocument -zipCodeFull 445544 -stateName ccccc -cityNa
 Merge-AzureSearchDocument -KeyFieldName zipCodeFull -KeyFieldValue 445544 -IndexName zipcodenew -DocumentData @{townName="llll"}
 ```
 
-#### Remove some documents
+#### Remove a document
 
 ```powershell
 Remove-AzureSearchDocument -KeyFieldName zipCodeFull -KeyFieldValue 445544 -IndexName zipcodenew
 ```
 
-#### Let's look up the zip code of Microsoft Japan office by the name of the town
+#### Look up the postal information of Microsoft Japan office by the name of the town
 
 ```powershell
 Search-AzureSearch -IndexName zipcodenew -SearchString "コウナン" -FieldSelection *
@@ -104,7 +104,7 @@ cityNameKanji  :
 townNameKanji  : 
 ```
 
-#### Or look up the state, district, and town name of Microsoft Japan office by the zip code
+#### Look up the postal information of Microsoft Japan office by the zip code
 
 ```powershell
 Search-AzureSearch -IndexName zipcodenew -SearchString 1080075 -FieldSelection *
@@ -122,7 +122,7 @@ cityNameKanji  :
 townNameKanji  :
 ```
 
-#### Let's look up how many areas which have a zip code in the same district by passing the AzureSearch output to a local variable
+#### Look up how many areas which have a zip code in the same district by passing the _AzureSearch_ output to a local variable
 
 ```powershell
 $others = Search-AzureSearch -IndexName zipcodenew -SearchString "ミナトク" -FieldSelection *
@@ -132,7 +132,7 @@ $others.Length
 50
 ```
 
-#### Let's look up how many _towers_ in the same district 
+#### Look up how many _towers_ in the same district 
 
 ```powershell
 $tmp | Where-Object {$_.townName -like '*タワー*'}
