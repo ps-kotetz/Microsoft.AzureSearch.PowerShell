@@ -266,7 +266,6 @@ function New-AzureSearchField{
         [string]$Analyzer
     )
 
-    # retriebable は default true ? searchable もdefault true?
     $fieldData=[ordered]@{
         name=$Name
         type=$Type
@@ -284,19 +283,64 @@ function New-AzureSearchField{
     New-Object psobject -Property $fieldData
 }
 
+function New-AzureSearchSuggester{
+<#
+ .SYNOPSIS
+ Create new Azure Serach Suggester
+
+ .DESCRIPTION
+ The New-AzureSearchField cmdlet lets create new Azure Serach field
+
+ .PARAMETER Name
+ Azure Search suggester name.
+
+ .PARAMETER SearchMode
+ Azure Search suggester search mode.
+
+ .PARAMETER SourceFields
+ Suggestion target fields.
+
+ .EXAMPLE
+ New-AzureSearchSuggester -Name mySuggester -SourceFields [ID, NAME, AGE] 
+
+ This exmaple creates new key field as string type.
+
+ #>
+    [CmdletBinding(
+            SupportsShouldProcess=$true, 
+            PositionalBinding=$true)]
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [string]$SearchMode="analyzingInfixMatching",
+        [Parameter(Mandatory=$true)]
+        [string]$SourceFields
+    )
+
+    $fieldData=[ordered]@{
+        name=$Name
+        searchMode=$SearchMode
+        sourceFields=$SourceFields
+    }
+    New-Object psobject -Property $fieldData
+}
+
 function New-AzureSearchIndex{
 <#
  .SYNOPSIS
  Create new Azure Serach index
 
  .DESCRIPTION
- The New-AzureSearchIndex cmdlet lets create new Azure Serach index
+ The New-AzureSearchIndex cmdlet lets create new Azure Serach inde
 
  .PARAMETER Name
  Azure Search index Name.
 
  .PARAMETER Fields
  Fields to be added to the index. You can use New-AzureSearchField function to create fields.
+
+ .PARAMETER Suggesters
+ Suggesters to be added to the index. You can use New-AzureSearchSuggester function to create fields.
 
  .PARAMETER JsonRequest
  When specified, result is returned as json object.
@@ -328,13 +372,16 @@ function New-AzureSearchIndex{
         [string]$Name,
         [Parameter(Mandatory=$true)]
         $Fields,
+        [Parameter(Mandatory=$true)]
+        $Suggesters,
         [switch]$JsonRequest
         )
     Write-Verbose -Message ("New-AzureSearchIndex")
     $requestUri = $AzureSearchService + "indexes" + $AzureSearchAPIVersion
     $props =[ordered]@{
         name = $Name
-        fields= $Fields
+        fields = $Fields
+        suggesters = $Suggesters
     }
     
     $indexData = New-Object psobject -Property $props
@@ -721,6 +768,103 @@ function Search-AzureSearch{
     }
 }
 
+## by Mubaatar
+function Suggest-AzureSearch{
+<#
+ .SYNOPSIS
+ Suggest Azure Search document
+
+ .DESCRIPTION
+ The Suggest-AzureSearch cmdlet suggests you an Azure Search document.
+
+ .PARAMETER IndexName
+ Azure Search index Name to search documents.
+
+ .PARAMETER SearchString
+ Search Criteria.
+
+ .PARAMETER FieldSelection
+ Specify field names to retrieve. If you omit it, it gets all fields.
+
+ .PARAMETER Filter
+ Specify filter condition.
+
+ .PARAMETER SuggesterName
+ Determines which fields are scanned for suggested query terms.
+
+ .PARAMETER Fuzzy
+ When set to true, this API finds suggestions even if there is a substituted or missing character in the search text. 
+
+ .PARAMETER Top
+ The number of suggestions to retrieve.
+
+ .PARAMETER OrderBy
+ A list of comma-separated expressions to sort the results by. 
+
+ .PARAMETER JsonRequest
+ When specified, result is returned as json object.
+
+ .EXAMPLE
+ Suggest-AzureSearch -IndexName hotels -SearchString nice -Fields hotelName,rating,description -SuggesterName 
+
+ This example search the hotels index by 'nice' criteria and retrieves specified fields.
+
+ .EXAMPLE
+ Suggest -IndexName hotels -SearchString goo -Fileter 'ratring eq 1'
+ 
+ This example search the hotels which has 1 rating.
+#>
+    [CmdletBinding(
+            SupportsShouldProcess=$true, 
+            PositionalBinding=$true)]
+    Param(
+        [Parameter(Mandatory=$true)][string]$IndexName,
+        [string]$SearchString,
+        [string]$FieldSelection="*",
+        [string]$Filter,
+        [string]$SuggesterName,
+        [boolean]$Fuzzy=$false,
+        [Int32]$Top=10,
+        [string]$OrderBy,
+        [switch]$JsonRequest
+        )
+    Write-Verbose -Message ("Suggest-AzureSearch")
+    $requestUri = $AzureSearchService + "indexes/" + $IndexName + "/docs/suggest" + $AzureSearchAPIVersion
+    $searchObj=[ordered]@{
+        search = $SearchString
+        select = $FieldSelection 
+        suggesterNeame = $SuggesterName
+    }
+    if($MyInvocation.BoundParameters.ContainsKey("filter"))
+    {
+        $searchObj.filter = $Filter
+    }
+    if($MyInvocation.BoundParameters.ContainsKey("fuzzy"))
+    {
+        $searchObj.filter = $Fuzzy
+    }
+    if($MyInvocation.BoundParameters.ContainsKey("top"))
+    {
+        $searchObj.filter = $Top
+    }
+    if($MyInvocation.BoundParameters.ContainsKey("orderby"))
+    {
+        $searchObj.filter = $OrderBy
+    }
+    Write-Verbose -Message ("Request URL : " + $requestUri)
+    Write-Verbose ("Suggest condition")
+    Write-Verbose ("$searchObj")
+    $indexData = New-Object psobject -Property $searchObj
+
+    if($JsonRequest)
+    {
+        Get-PostResult -Uri $requestUri -Object $indexData -JsonRequest
+    }
+    else
+    {
+        Get-PostResult -Uri $requestUri -Object $indexData 
+    }
+}
 
 ## Private functions ##
 function Check-AzureConnection{
