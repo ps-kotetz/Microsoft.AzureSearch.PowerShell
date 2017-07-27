@@ -135,7 +135,7 @@ $others.Length
 #### Look up how many _towers_ in the same district 
 
 ```powershell
-$tmp | Where-Object {$_.townName -like '*タワー*'}
+$others | Where-Object {$_.townName -like '*タワー*'}
 
 #output:
 @search.score  : 0.24716201
